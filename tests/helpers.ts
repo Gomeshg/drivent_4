@@ -12,6 +12,7 @@ export async function cleanDb() {
   await prisma.enrollment.deleteMany({});
   await prisma.event.deleteMany({});
   await prisma.session.deleteMany({});
+  await prisma.booking.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.ticketType.deleteMany({});
   await prisma.room.deleteMany({});
@@ -25,4 +26,8 @@ export async function generateValidToken(user?: User) {
   await createSession(token);
 
   return token;
+}
+
+export async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

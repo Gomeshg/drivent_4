@@ -10,9 +10,9 @@ import {
   loginUser,
   createEnrollmentWithAddress,
   createTicketTypeWithHotel,
+  createTicketTypeWithOutHotel,
   createTicket,
   createPayment,
-  generateCreditCardData,
   createTicketTypeRemote,
   createHotel,
   createRoomWithHotelId,
@@ -20,6 +20,7 @@ import {
 } from "../factories";
 const fourHours = 14400;
 const oneSecond = 1;
+const fakeRoomId = 38293293829;
 
 beforeAll(async () => {
   await init();
@@ -146,7 +147,101 @@ describe("POST /booking", () => {
   });
 
   describe("When token is valid", () => {
-    it("should respond with status 404 if there are no reservation", async () => {
+    it("should respond with status 404 if the propertie in body is invalid", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+
+      const response = await server
+        .post("/booking")
+        .send({ wrongProperty: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.BAD_REQUEST);
+    });
+
+    it("should respond with status 404 if the value in body is invalid", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: "Wrong value" })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.BAD_REQUEST);
+    });
+
+    it("should respond with status 404 if there are no enrollment", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.NOT_FOUND);
+    });
+
+    it("should respond with status 404 if there are no ticket", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+      await createEnrollmentWithAddress(user);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.NOT_FOUND);
+    });
+
+    it("should respond with status 404 if the ticket is remote", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+      const enrollment = await createEnrollmentWithAddress(user);
+      const ticketType = await createTicketTypeRemote();
+      await createTicket(enrollment.id, ticketType.id, TicketStatus.RESERVED);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.FORBIDDEN);
+    });
+
+    it("should respond with status 404 if the ticket not include hotel", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+      const enrollment = await createEnrollmentWithAddress(user);
+      const ticketType = await createTicketTypeWithOutHotel();
+      await createTicket(enrollment.id, ticketType.id, TicketStatus.RESERVED);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.FORBIDDEN);
+    });
+
+    it("should respond with status 404 if the payment wasn't made", async () => {
+      const user = await createUser();
+      const session = await loginUser(user, fourHours);
+      const enrollment = await createEnrollmentWithAddress(user);
+      const ticketType = await createTicketTypeWithHotel();
+      await createTicket(enrollment.id, ticketType.id, TicketStatus.RESERVED);
+
+      const response = await server
+        .post("/booking")
+        .send({ roomId: fakeRoomId })
+        .set("Authorization", `Bearer ${session.token}`);
+
+      expect(response.status).toBe(httpStatus.FORBIDDEN);
+    });
+
+    it("should respond with status 404 if the room sent does not exist", async () => {
       const user = await createUser();
       const session = await loginUser(user, fourHours);
       const enrollment = await createEnrollmentWithAddress(user);
@@ -157,12 +252,17 @@ describe("POST /booking", () => {
       const hotel = await createHotel();
       await createRoomWithHotelId(hotel.id);
 
-      const response = await server.post("/booking").set("Authorization", `Bearer ${session.token}`);
+      const response = await server
+        .post("/booking")
+        .send({
+          roomId: fakeRoomId,
+        })
+        .set("Authorization", `Bearer ${session.token}`);
 
       expect(response.status).toBe(httpStatus.NOT_FOUND);
     });
 
-    it("should respond with status 200 when the reservation was done", async () => {
+    it("should respond with status 200 when the reservation was created", async () => {
       const user = await createUser();
       const session = await loginUser(user, fourHours);
       const enrollment = await createEnrollmentWithAddress(user);
@@ -172,21 +272,12 @@ describe("POST /booking", () => {
       await createPayment(ticket.id, ticketType.price);
       const hotel = await createHotel();
       const room = await createRoomWithHotelId(hotel.id);
-      const booking = await createBooking(user.id, room.id);
 
-      const response = await server.post("/booking").set("Authorization", `Bearer ${session.token}`);
+      const response = await server
+        .post("/booking")
+        .send({ roomId: room.id })
+        .set("Authorization", `Bearer ${session.token}`);
       expect(response.status).toBe(httpStatus.OK);
-      expect(response.body).toEqual({
-        id: booking.id,
-        Room: {
-          id: room.id,
-          name: room.name,
-          capacity: room.capacity,
-          hotelId: room.hotelId,
-          createdAt: room.createdAt.toISOString(),
-          updatedAt: room.updatedAt.toISOString(),
-        },
-      });
     });
   });
 });

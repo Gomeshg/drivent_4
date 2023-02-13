@@ -26,13 +26,13 @@ export async function createBooking(userId: number, roomId: number): Promise<Ret
     throw notFoundError();
   }
 
-  if (ticket.status !== TicketStatus.PAID || !ticket.TicketType.includesHotel || ticket.TicketType.isRemote) {
-    throw forbiddenError("It's outside the rules for finalize reservation");
+  if (!ticket.TicketType.includesHotel || ticket.TicketType.isRemote) {
+    throw forbiddenError("An face-to-face ticket or included hotel is required to make a reservation");
   }
 
   const payment = await paymentRepository.findPaymentByTicketId(ticket.id);
   if (!payment) {
-    throw forbiddenError("It's outside the rules for finalize reservation");
+    throw forbiddenError("Payment not made");
   }
 
   const room = await bookingRepository.findRoom(roomId);
@@ -55,6 +55,7 @@ export async function createBooking(userId: number, roomId: number): Promise<Ret
 
 const bookingService = {
   findBooking,
+  createBooking,
 };
 
 export default bookingService;

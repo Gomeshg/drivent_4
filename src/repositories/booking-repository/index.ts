@@ -11,6 +11,14 @@ export async function find(userId: number) {
   });
 }
 
+export async function findRoom(roomId: number) {
+  return prisma.room.findUnique({
+    where: {
+      id: roomId,
+    },
+  });
+}
+
 export async function create(userId: number, roomId: number) {
   return prisma.booking.create({
     data: {
@@ -31,10 +39,35 @@ export async function update(bookingId: number, roomId: number) {
   });
 }
 
+export async function increaseRoomCapacity(roomId: number) {
+  return prisma.room.update({
+    where: {
+      id: roomId,
+    },
+    data: {
+      capacity: { increment: 1 },
+    },
+  });
+}
+
+export async function decreaseRoomCapacity(roomId: number) {
+  return prisma.room.update({
+    where: {
+      id: roomId,
+    },
+    data: {
+      capacity: { decrement: 1 },
+    },
+  });
+}
+
 const bookingRepository = {
   find,
+  findRoom,
   create,
   update,
+  increaseRoomCapacity,
+  decreaseRoomCapacity,
 };
 
 export default bookingRepository;

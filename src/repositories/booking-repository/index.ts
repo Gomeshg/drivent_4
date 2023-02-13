@@ -1,9 +1,20 @@
 import { prisma } from "@/config";
 
-export async function find(userId: number) {
+export async function findByUserId(userId: number) {
   return prisma.booking.findFirst({
     where: {
       userId,
+    },
+    include: {
+      Room: true,
+    },
+  });
+}
+
+export async function findByBookingId(bookingId: number) {
+  return prisma.booking.findUnique({
+    where: {
+      id: bookingId,
     },
     include: {
       Room: true,
@@ -36,6 +47,9 @@ export async function update(bookingId: number, roomId: number) {
     data: {
       roomId,
     },
+    include: {
+      Room: true,
+    },
   });
 }
 
@@ -62,7 +76,8 @@ export async function decreaseRoomCapacity(roomId: number) {
 }
 
 const bookingRepository = {
-  find,
+  findByUserId,
+  findByBookingId,
   findRoom,
   create,
   update,
